@@ -1,0 +1,1480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WARWATCH - 2026 Iran War Intelligence Dashboard</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #0b0d11;
+      --surface: #131720;
+      --border: #1e2540;
+      --red: #e84343;
+      --orange: #f5a623;
+      --blue: #4a9eff;
+      --green: #50c878;
+      --purple: #a855f7;
+      --text: #e8eaf0;
+      --text-muted: #6b7280;
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      overflow: hidden;
+    }
+
+    /* Top Navigation */
+    .navbar {
+      position: sticky;
+      top: 0;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0;
+      display: flex;
+      align-items: center;
+      height: 60px;
+      z-index: 2000;
+    }
+
+    .navbar-brand {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--red);
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-right: 1px solid var(--border);
+    }
+
+    .navbar-tabs {
+      display: flex;
+      flex: 1;
+      margin: 0;
+      list-style: none;
+      height: 100%;
+    }
+
+    .tab-btn {
+      flex: 1;
+      padding: 0 20px;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      overflow: hidden;
+    }
+
+    .tab-btn:hover {
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .tab-btn.active {
+      color: var(--blue);
+      border-bottom-color: var(--blue);
+    }
+
+    /* Main Container */
+    .container {
+      display: flex;
+      height: calc(100vh - 60px);
+      gap: 0;
+      position: relative;
+      z-index: 1;
+      isolation: isolate;
+      overflow: hidden;
+    }
+
+    .sidebar-left, .sidebar-right {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      overflow-y: auto;
+      padding: 20px;
+    }
+
+    .sidebar-left {
+      width: 280px;
+      flex-shrink: 0;
+    }
+
+    .sidebar-right {
+      width: 280px;
+      flex-shrink: 0;
+      display: block;
+      background: var(--surface);
+      border-left: 1px solid var(--border);
+      overflow-y: auto;
+      padding: 20px;
+    }
+
+    .main-content {
+      flex: 1;
+      background: var(--bg);
+      position: relative;
+    }
+
+    .tab-content {
+      display: none;
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+
+    .tab-content.active {
+      display: flex;
+    }
+
+    /* Map Tab */
+    .tab-content.map-tab {
+      flex-direction: column;
+    }
+
+    #map {
+      flex: 1;
+      background: var(--bg);
+    }
+
+    .leaflet-container {
+      background: var(--bg) !important;
+    }
+
+    /* Sidebar Sections */
+    .sidebar-section {
+      margin-bottom: 24px;
+    }
+
+    .sidebar-section-title {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+      letter-spacing: 0.5px;
+    }
+
+    .stat-block {
+      background: var(--bg);
+      padding: 12px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      margin-bottom: 8px;
+    }
+
+    .stat-label {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+
+    .stat-value {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--blue);
+    }
+
+    .stat-value.red { color: var(--red); }
+    .stat-value.orange { color: var(--orange); }
+    .stat-value.green { color: var(--green); }
+
+    /* Country Info Panel */
+    .country-info-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .country-status-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .country-info-title {
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .country-role {
+      font-size: 11px;
+      color: var(--text-muted);
+      line-height: 1.4;
+      margin-bottom: 12px;
+    }
+
+    .country-status {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      padding: 4px 8px;
+      border-radius: 3px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      margin-bottom: 12px;
+    }
+
+    .country-facts {
+      font-size: 12px;
+      line-height: 1.6;
+      color: var(--text);
+    }
+
+    .country-facts li {
+      margin-bottom: 8px;
+      margin-left: 16px;
+    }
+
+    /* Proxy Network Tab */
+    .proxy-svg-container {
+      display: flex;
+      gap: 20px;
+      padding: 20px;
+      height: 100%;
+      width: 100%;
+      flex: 1;
+    }
+
+    #proxy-svg {
+      flex-shrink: 0;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+    }
+
+    .proxy-info {
+      flex: 1;
+      overflow-y: auto;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 20px;
+    }
+
+    .proxy-status-table {
+      width: 100%;
+      font-size: 12px;
+      border-collapse: collapse;
+      margin-bottom: 16px;
+    }
+
+    .proxy-status-table tr {
+      border-bottom: 1px solid var(--border);
+    }
+
+    .proxy-status-table td {
+      padding: 8px 0;
+    }
+
+    .proxy-status-table td:first-child {
+      font-weight: 500;
+      color: var(--text);
+    }
+
+    .proxy-status-table td:last-child {
+      color: var(--text-muted);
+      text-align: right;
+    }
+
+    /* Attack Waves Tab */
+    .attack-waves-content {
+      display: flex;
+      gap: 20px;
+      padding: 20px;
+      height: 100%;
+      width: 100%;
+      flex: 1;
+    }
+
+    .chart-container {
+      flex: 1;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 20px;
+      overflow-y: auto;
+    }
+
+    #attackChart {
+      width: 100%;
+      max-width: 100%;
+    }
+
+    .attack-sidebar {
+      width: 280px;
+      overflow-y: auto;
+    }
+
+    /* Daily War Log Tab */
+    .war-log-content {
+      display: flex;
+      gap: 20px;
+      padding: 20px;
+      height: 100%;
+      width: 100%;
+      flex: 1;
+    }
+
+    .accordion-container {
+      flex: 1;
+      overflow-y: auto;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 20px;
+    }
+
+    .accordion-item {
+      margin-bottom: 8px;
+    }
+
+    .accordion-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-weight: 500;
+      font-size: 13px;
+    }
+
+    .accordion-header:hover {
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .severity-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .severity-dot.critical { background: var(--red); }
+    .severity-dot.high { background: var(--orange); }
+    .severity-dot.medium { background: var(--blue); }
+
+    .accordion-content {
+      display: none;
+      padding: 12px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-top: none;
+      border-radius: 0 0 4px 4px;
+      font-size: 12px;
+      line-height: 1.6;
+      margin-bottom: 4px;
+    }
+
+    .accordion-content.active {
+      display: block;
+    }
+
+    .accordion-content ul {
+      margin-left: 20px;
+    }
+
+    .accordion-content li {
+      margin-bottom: 6px;
+      color: var(--text);
+    }
+
+    .log-sidebar {
+      width: 280px;
+      overflow-y: auto;
+    }
+
+    /* Intel Tab */
+    .intel-content {
+      display: flex;
+      flex-direction: column;
+      padding: 20px;
+      height: 100%;
+      width: 100%;
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    .intel-section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .intel-section-title {
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 16px;
+      color: var(--blue);
+    }
+
+    .casualty-comparison {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .casualty-bar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .casualty-label {
+      width: 80px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .casualty-bar-container {
+      flex: 1;
+      height: 24px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .casualty-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--red), var(--orange));
+      transition: width 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      padding-right: 8px;
+    }
+
+    .casualty-value {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .energy-table {
+      width: 100%;
+      font-size: 12px;
+      border-collapse: collapse;
+      margin-bottom: 16px;
+    }
+
+    .energy-table tr {
+      border-bottom: 1px solid var(--border);
+    }
+
+    .energy-table td {
+      padding: 10px 0;
+    }
+
+    .energy-table td:first-child {
+      color: var(--text-muted);
+    }
+
+    .energy-table td:last-child {
+      text-align: right;
+      font-weight: 600;
+      color: var(--orange);
+    }
+
+    .intel-cards {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+
+    .intel-card {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 16px;
+    }
+
+    .intel-card-title {
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 12px;
+      color: var(--blue);
+    }
+
+    .intel-card-content {
+      font-size: 11px;
+      line-height: 1.6;
+      color: var(--text);
+    }
+
+    .intel-card-content li {
+      margin-bottom: 6px;
+      margin-left: 16px;
+    }
+
+    /* Pulsing Marker Animation */
+    .pulse-marker {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      position: relative;
+      box-shadow: 0 0 8px rgba(0, 0, 0, 0.5);
+    }
+
+    .pulse-marker::after {
+      content: '';
+      position: absolute;
+      inset: -6px;
+      border-radius: 50%;
+      border: 2px solid currentColor;
+      animation: pulse-ring 1.5s ease-out infinite;
+    }
+
+    @keyframes pulse-ring {
+      0% {
+        transform: scale(1);
+        opacity: 1;
+      }
+      100% {
+        transform: scale(2.5);
+        opacity: 0;
+      }
+    }
+
+    /* Animated Polyline */
+    .animated-route {
+      animation: dash 20s linear infinite;
+    }
+
+    @keyframes dash {
+      0% {
+        stroke-dashoffset: 0;
+      }
+      100% {
+        stroke-dashoffset: -100;
+      }
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: var(--bg);
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--text-muted);
+    }
+  </style>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="navbar-brand">⚔ WARWATCH</div>
+  <ul class="navbar-tabs">
+    <li><button class="tab-btn active" onclick="switchTab('map')">CONFLICT MAP</button></li>
+    <li><button class="tab-btn" onclick="switchTab('proxy')">PROXY NETWORK</button></li>
+    <li><button class="tab-btn" onclick="switchTab('waves')">ATTACK WAVES</button></li>
+    <li><button class="tab-btn" onclick="switchTab('log')">DAILY LOG</button></li>
+    <li><button class="tab-btn" onclick="switchTab('intel')">INTEL & DATA</button></li>
+  </ul>
+</nav>
+
+<div class="container">
+  <!-- TAB 1: CONFLICT MAP -->
+  <div id="tab-map" class="tab-content map-tab active">
+    <div style="display: flex; height: 100%; gap: 0;">
+      <div class="sidebar-left">
+        <div class="sidebar-section">
+          <div class="sidebar-section-title">Live Toll</div>
+          <div class="stat-block">
+            <div class="stat-label">Killed in Iran</div>
+            <div class="stat-value red">2,076</div>
+          </div>
+          <div class="stat-block">
+            <div class="stat-label">Injured</div>
+            <div class="stat-value orange">26,500+</div>
+          </div>
+          <div class="stat-block">
+            <div class="stat-label">Iran Military KIA</div>
+            <div class="stat-value red">5,300+</div>
+          </div>
+          <div class="stat-block">
+            <div class="stat-label">Ships Destroyed</div>
+            <div class="stat-value">19</div>
+          </div>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title">Active Fronts</div>
+          <div class="stat-block">
+            <div class="stat-label">Iran (Primary)</div>
+            <div style="font-size: 11px; color: var(--red);">ACTIVE CONFLICT</div>
+          </div>
+          <div class="stat-block">
+            <div class="stat-label">Israel / Gaza</div>
+            <div style="font-size: 11px; color: var(--blue);">ACTIVE OFFENSIVE</div>
+          </div>
+          <div class="stat-block">
+            <div class="stat-label">Lebanon</div>
+            <div style="font-size: 11px; color: var(--orange);">ACTIVE FRONT</div>
+          </div>
+          <div class="stat-block">
+            <div class="stat-label">Yemen (Houthis)</div>
+            <div style="font-size: 11px; color: var(--orange);">ACTIVE FRONT</div>
+          </div>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title">Day 35 Status</div>
+          <div class="stat-block">
+            <div class="stat-label">F-15E Shot Down</div>
+            <div style="font-size: 11px; color: var(--red);">Critical Loss</div>
+          </div>
+          <div class="stat-block">
+            <div class="stat-label">A-10 Downed in CSAR</div>
+            <div style="font-size: 11px; color: var(--red);">Rescue Ops</div>
+          </div>
+          <div class="stat-block">
+            <div class="stat-label">Hezbollah Ops (24h)</div>
+            <div style="font-size: 11px; color: var(--orange);">60 Operations</div>
+          </div>
+        </div>
+      </div>
+
+      <div id="map" style="flex: 1;"></div>
+
+      <div class="sidebar-right" id="countryInfoPanel">
+        <div id="countryInfoContent">
+          <div style="color: var(--text-muted); font-size: 13px; text-align: center; margin-top: 60px; line-height: 1.8;">
+            <div style="font-size: 28px; margin-bottom: 12px;">🗺</div>
+            <div style="font-weight: 600; color: var(--text); margin-bottom: 8px;">Country Intel</div>
+            Click any marker on the map to view country status, role, and key facts.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 2: PROXY NETWORK -->
+  <div id="tab-proxy" class="tab-content">
+    <div class="proxy-svg-container">
+      <svg id="proxy-svg" width="700" height="500"></svg>
+      <div class="proxy-info">
+        <div class="sidebar-section-title">Axis Status</div>
+        <table class="proxy-status-table">
+          <tr>
+            <td>Iran</td>
+            <td>Primary</td>
+          </tr>
+          <tr>
+            <td>Hezbollah</td>
+            <td>Active</td>
+          </tr>
+          <tr>
+            <td>Houthis</td>
+            <td>Entered Mar 29</td>
+          </tr>
+          <tr>
+            <td>Iraqi PMF</td>
+            <td>Partial</td>
+          </tr>
+          <tr>
+            <td>Hamas</td>
+            <td>Decimated</td>
+          </tr>
+          <tr>
+            <td>Russia</td>
+            <td>Receives Shahed</td>
+          </tr>
+        </table>
+
+        <div class="sidebar-section-title">Weapons Pipeline</div>
+        <p style="font-size: 12px; line-height: 1.6; color: var(--text); margin-bottom: 12px;">
+          <strong>Iran → Russia:</strong> Shahed-136 drones, ballistic missile technology, surveillance intel
+        </p>
+        <p style="font-size: 12px; line-height: 1.6; color: var(--text); margin-bottom: 12px;">
+          <strong>Russia → Iran:</strong> Air defense systems (S-300, S-400), radar technology, combat intelligence
+        </p>
+        <p style="font-size: 12px; line-height: 1.6; color: var(--text);">
+          <strong>Iran → Proxies:</strong> Missiles, drones, weapons tech, command & control via encrypted networks
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 3: ATTACK WAVES -->
+  <div id="tab-waves" class="tab-content">
+    <div class="attack-waves-content">
+      <div class="chart-container">
+        <svg id="attackChart" viewBox="0 0 950 350" style="max-height: 100%;"></svg>
+      </div>
+      <div class="attack-sidebar">
+        <div class="sidebar-section">
+          <div class="sidebar-section-title">Cumulative Strikes</div>
+          <div class="stat-block">
+            <div class="stat-label">Total Attack Waves</div>
+            <div class="stat-value">1,265</div>
+          </div>
+          <div class="stat-block">
+            <div class="stat-label">Peak Day (Mar 2)</div>
+            <div class="stat-value orange">55 waves</div>
+          </div>
+          <div class="stat-block">
+            <div class="stat-label">Avg Per Day</div>
+            <div class="stat-value blue">36</div>
+          </div>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title">Hezbollah Weapons</div>
+          <div class="stat-block">
+            <div class="stat-label">Rockets (24h avg)</div>
+            <div style="font-size: 11px; color: var(--orange);">40–60 per day</div>
+          </div>
+          <div class="stat-block">
+            <div class="stat-label">Anti-tank Missiles</div>
+            <div style="font-size: 11px; color: var(--orange);">Daily operations</div>
+          </div>
+          <div class="stat-block">
+            <div class="stat-label">Deployment</div>
+            <div style="font-size: 11px; color: var(--orange);">Southern Lebanon</div>
+          </div>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title">US-Israel Strikes</div>
+          <div class="stat-block">
+            <div class="stat-label">Targets Inside Iran</div>
+            <div class="stat-value blue">10,000+</div>
+          </div>
+          <div class="stat-block">
+            <div class="stat-label">Daily Sorties (avg)</div>
+            <div style="font-size: 11px; color: var(--blue);">200+ per day</div>
+          </div>
+          <div class="stat-block">
+            <div class="stat-label">Strike Accuracy</div>
+            <div style="font-size: 11px; color: var(--blue);">98%+ precision</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 4: DAILY WAR LOG -->
+  <div id="tab-log" class="tab-content">
+    <div class="war-log-content">
+      <div class="accordion-container" id="accordionContainer"></div>
+      <div class="log-sidebar">
+        <div class="sidebar-section">
+          <div class="sidebar-section-title">Running Totals</div>
+          <div class="stat-block">
+            <div class="stat-label">Days of War</div>
+            <div class="stat-value blue">35</div>
+          </div>
+          <div class="stat-block">
+            <div class="stat-label">Killed (Iran)</div>
+            <div class="stat-value red">2,076</div>
+          </div>
+          <div class="stat-block">
+            <div class="stat-label">Injured</div>
+            <div class="stat-value orange">26,500+</div>
+          </div>
+          <div class="stat-block">
+            <div class="stat-label">Brent Crude</div>
+            <div class="stat-value orange">$118/bbl</div>
+          </div>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-section-title">Key Milestones</div>
+          <div class="stat-block" style="font-size: 11px; line-height: 1.5;">
+            <strong>Feb 28:</strong> War begins — Khamenei assassinated<br>
+            <strong>Mar 2:</strong> Hezbollah re-enters<br>
+            <strong>Mar 14:</strong> Larijani assassinated<br>
+            <strong>Mar 29:</strong> Houthis enter war<br>
+            <strong>Mar 30:</strong> E-3 AWACS destroyed
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 5: INTEL & DATA -->
+  <div id="tab-intel" class="tab-content">
+    <div class="intel-content">
+      <div class="intel-section">
+        <div class="intel-section-title">Casualty Comparison (35-Day War)</div>
+        <div class="casualty-comparison">
+          <div class="casualty-bar">
+            <div class="casualty-label">Gaza (Oct 23–Apr)</div>
+            <div class="casualty-bar-container">
+              <div class="casualty-bar-fill" style="width: 100%;">
+                <div class="casualty-value">75–126K</div>
+              </div>
+            </div>
+          </div>
+          <div class="casualty-bar">
+            <div class="casualty-label">Iran</div>
+            <div class="casualty-bar-container">
+              <div class="casualty-bar-fill" style="width: 1.6%;">
+                <div class="casualty-value">2,076</div>
+              </div>
+            </div>
+          </div>
+          <div class="casualty-bar">
+            <div class="casualty-label">Lebanon</div>
+            <div class="casualty-bar-container">
+              <div class="casualty-bar-fill" style="width: 0.9%;">
+                <div class="casualty-value">1,116</div>
+              </div>
+            </div>
+          </div>
+          <div class="casualty-bar">
+            <div class="casualty-label">Russia-Ukraine (total)</div>
+            <div class="casualty-bar-container">
+              <div class="casualty-bar-fill" style="width: 100%;">
+                <div class="casualty-value">1.2M+</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="intel-section">
+        <div class="intel-section-title">Energy Market Impact</div>
+        <table class="energy-table">
+          <tr>
+            <td>Brent Crude Price</td>
+            <td>$118/bbl (+50%)</td>
+          </tr>
+          <tr>
+            <td>Jet Fuel Premium</td>
+            <td>+100%</td>
+          </tr>
+          <tr>
+            <td>Hormuz Daily Transit</td>
+            <td>6 ships (was 130)</td>
+          </tr>
+          <tr>
+            <td>Suez Canal Traffic</td>
+            <td>Severely reduced</td>
+          </tr>
+          <tr>
+            <td>Global LNG Supply</td>
+            <td>Qatar offline</td>
+          </tr>
+          <tr>
+            <td>South Pars (Iran)</td>
+            <td>Burning (Day 15+)</td>
+          </tr>
+        </table>
+      </div>
+
+      <div class="intel-section">
+        <div class="intel-section-title">Strategic Positions</div>
+        <div class="intel-cards">
+          <div class="intel-card">
+            <div class="intel-card-title">US War Position</div>
+            <div class="intel-card-content">
+              <ul>
+                <li>Air superiority established</li>
+                <li>10,000+ targets struck inside Iran</li>
+                <li>Carrier group operations ongoing</li>
+                <li>Jet fuel crisis affecting logistics</li>
+                <li>F-15E down, A-10 downed in CSAR</li>
+                <li>82nd Airborne deploying</li>
+              </ul>
+            </div>
+          </div>
+          <div class="intel-card">
+            <div class="intel-card-title">Iran Internal Status</div>
+            <div class="intel-card-content">
+              <ul>
+                <li>Khamenei assassinated (Day 1)</li>
+                <li>Larijani assassinated (Day 14)</li>
+                <li>Internet at 4% connectivity</li>
+                <li>Military capability at 40%</li>
+                <li>Missile inventory depleting</li>
+                <li>Navy severely degraded</li>
+              </ul>
+            </div>
+          </div>
+          <div class="intel-card">
+            <div class="intel-card-title">World Reactions</div>
+            <div class="intel-card-content">
+              <ul>
+                <li>EU restricts US base access</li>
+                <li>NATO fracturing</li>
+                <li>Pakistan mediating (stalled)</li>
+                <li>Saudi Arabia critical</li>
+                <li>40-nation Hormuz summit</li>
+                <li>Russia condemns US at UNSC</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// ============================================================================
+// WAR_DATA - Complete conflict dataset
+// ============================================================================
+const WAR_DATA = {
+  stats: {
+    killed: 2076,
+    injured: 26500,
+    usTargets: 10000,
+    iranMilitaryKIA: 5300,
+    iranianMissiles: 500,
+    iranianDrones: 2000,
+    shipsDestroyed: 19
+  },
+  attackWaves: [44,55,15,12,18,10,14,20,16,12,11,13,15,22,56,45,38,42,54,41,20,25,30,35,38,40,44,42,38,36,34,40,38,44,42],
+  countries: {
+    iran: { name:"Iran", lat:32, lng:53, role:"Primary combatant - target of US-Israel strikes", status:"ACTIVE CONFLICT", color:"#e84343", facts:["Khamenei assassinated Day 1","2,076+ civilians killed","26,500+ injured","5,300+ military KIA","Internet connectivity at 4%","Chain of command disrupted","10,000+ US targets struck inside Iran"] },
+    israel: { name:"Israel / Gaza", lat:31.5, lng:34.8, role:"Leading strike operations against Iran alongside US forces", status:"ACTIVE OFFENSIVE", color:"#4a9eff", facts:["Leading joint US-Israel strike campaign","75,000–126,000 killed in Gaza since Oct 2023","Ground troops active in Lebanon","F-35 struck by Iranian missile (survived)","F-15E shot down Day 35","A-10 Warthog downed during rescue"] },
+    lebanon: { name:"Lebanon / Hezbollah", lat:33.9, lng:35.5, role:"Hezbollah re-entered war Mar 2, conducting 60+ ops/day", status:"ACTIVE FRONT", color:"#f5a623", facts:["Re-entered war March 2 (Day 3)","60 operations in 24hrs (Day 35)","1,116+ killed","1M+ displaced","Rockets, UAVs, anti-tank weapons deployed","Pasteur Institute (biomedical) struck Day 35"] },
+    yemen: { name:"Yemen / Houthis", lat:15.5, lng:48, role:"Entered war March 29 (Day 29) — 4th active front", status:"ACTIVE FRONT", color:"#f5a623", facts:["Entered war March 29 (Day 29)","First missile fired at Israel","Now the 4th active front","Previously focused on Red Sea shipping"] },
+    qatar: { name:"Qatar", lat:25.3, lng:51.2, role:"Struck by Iran — Ras Laffan LNG hub hit", status:"STRUCK", color:"#a855f7", facts:["Ras Laffan LNG hub struck Day 1","Force Majeure declared on LNG exports","Shot down 2 Iranian bombers (Day 3)","Global LNG supply severely disrupted"] },
+    saudi: { name:"Saudi Arabia", lat:24, lng:45, role:"US base struck — E-3 AWACS destroyed", status:"STRUCK", color:"#a855f7", facts:["E-3 AWACS destroyed at Prince Sultan Air Base (Day 31)","Energy sites targeted","Mediating alongside Pakistan"] },
+    kuwait: { name:"Kuwait", lat:29.3, lng:47.7, role:"Mina Al-Ahmadi refinery struck", status:"STRUCK", color:"#a855f7", facts:["Mina Al-Ahmadi refinery struck","Fires set at refinery","67 soldiers injured","Major oil export disruption"] },
+    bahrain: { name:"Bahrain", lat:26.2, lng:50.6, role:"US 5th Fleet HQ — airport fuel tanks hit", status:"STRUCK", color:"#a855f7", facts:["US 5th Fleet headquarters","Airport fuel tanks set on fire (Day 2)","Multiple drone strikes","Bahrain struck Day 2 by Iranian forces"] },
+    uae: { name:"UAE", lat:24.4, lng:54.4, role:"Intercepted 7 ballistic missiles + 15 UAVs on Mar 20", status:"TARGETED", color:"#a855f7", facts:["7 ballistic missiles intercepted on Mar 20","15 UAVs intercepted same day","Significant air defense activity","Economic hub under threat"] },
+    iraq: { name:"Iraq", lat:33, lng:44, role:"PMF attacking US Embassy Baghdad, 196 attacks on Kurdistan", status:"PROXY ACTIVE", color:"#f5a623", facts:["PMF (Iran-backed) attacking US Embassy Baghdad","196 attacks on Iraqi Kurdistan","Partial compliance with Iran directives","US forces targeted repeatedly"] },
+    jordan: { name:"Jordan", lat:31, lng:36, role:"Intercepted 119 Iranian missiles in first week", status:"DEFENSIVE", color:"#50c878", facts:["Intercepted 119 Iranian missiles in first week","Active air defense cooperation with US-Israel","Strategic corridor for strike aircraft"] },
+    syria: { name:"Syria", lat:35, lng:38, role:"Transit corridor for weapons and forces", status:"TRANSIT", color:"#6b7280", facts:["Weapons transit corridor","Iranian supply lines run through Syrian territory","US strike aircraft operating from regional bases"] },
+    egypt: { name:"Egypt", lat:26, lng:30, role:"Observer — Suez Canal traffic significantly reduced", status:"MONITORING", color:"#6b7280", facts:["Suez Canal traffic severely reduced","Major economic impact from Hormuz closure","Monitoring situation — not directly involved"] }
+  },
+  proxyNodes: [
+    { id:"hamas", name:"Hamas", status:"Decimated", color:"#e84343", angle:210, dist:180 },
+    { id:"hezbollah", name:"Hezbollah", status:"Active", color:"#f5a623", angle:270, dist:180 },
+    { id:"houthis", name:"Houthis", status:"Entered Mar 29", color:"#f5a623", angle:330, dist:180 },
+    { id:"pmf", name:"Iraqi PMF", status:"Partial", color:"#a855f7", angle:30, dist:180 },
+    { id:"russia", name:"Russia", status:"Receives Shaheds", color:"#6b7280", angle:90, dist:180 },
+    { id:"us_israel", name:"US + Israel", status:"Striking Iran", color:"#4a9eff", angle:150, dist:200 }
+  ],
+  days: [
+    { day:1, date:"Feb 28", title:"Khamenei Assassinated — War Begins", severity:"critical", events:["Supreme Leader Khamenei assassinated in precision strike","44 Iranian attack waves launched at Israel","Strait of Hormuz closed — global oil shock","Qatar's Ras Laffan LNG hub struck, Force Majeure declared","Iran internet connectivity collapses to 4%"] },
+    { day:2, date:"Mar 1", title:"Peak Attack Day — 55 Waves", severity:"critical", events:["55 Iranian attack waves — highest single-day total","Bahrain struck — airport fuel tanks set on fire","US-Israel strike 1,000+ targets inside Iran","USS strikes multiple IRGC naval assets"] },
+    { day:3, date:"Mar 2", title:"Hezbollah Re-enters, Qatar Downs Bombers", severity:"high", events:["Hezbollah formally re-enters war — second front opens","Qatar air defense shoots down 2 Iranian bombers","USS Charlotte sinks IRIS Dena (Iranian frigate)","Hormuz closure causing global shipping crisis"] },
+    { day:4, date:"Mar 3", title:"Minab Girls School Bombed — 170+ Killed", severity:"critical", events:["Minab girls school bombed — 170+ civilians killed (Iran blames US-Israel, disputed)","Lebanon ground invasion begins by Israeli forces","First US military KIA of the war","International condemnation intensifies"] },
+    { day:5, date:"Mar 4", title:"B-2 Bombers Deployed", severity:"high", events:["B-2 Spirit stealth bombers deployed to theater","Strikes on hardened underground Iranian facilities","IRGC command bunkers targeted","3,900+ Iranian military killed cumulative"] },
+    { day:6, date:"Mar 5", title:"Bahrain Airport Hit", severity:"high", events:["Bahrain airport infrastructure struck by Iranian drones","US 5th Fleet on high alert","Regional aviation disruptions spreading","Oil markets spike — Brent above $100"] },
+    { day:7, date:"Mar 6", title:"Naval Campaign Intensifies", severity:"high", events:["19 ships destroyed in Persian Gulf and Strait of Hormuz","IRGC fast boats engaging US carrier group","Iranian submarine activity detected","Hormuz transit effectively zero for tankers"] },
+    { day:8, date:"Mar 7", title:"Iranian Air Defenses Degraded", severity:"medium", events:["S-300 air defense systems destroyed in multiple sites","US-Israel achieve air superiority over western Iran","IRGC aviation assets largely neutralized","Iranian civilian infrastructure increasingly targeted"] },
+    { day:9, date:"Mar 8", title:"Ground Forces Advance in Lebanon", severity:"high", events:["Israeli ground forces advance 15km into southern Lebanon","Hezbollah anti-tank missile teams active","Civilian evacuation corridors established","UN calls for ceasefire — rejected by US and Israel"] },
+    { day:10, date:"Mar 9", title:"Energy Infrastructure Strikes Begin", severity:"high", events:["First strikes on Iranian oil and gas infrastructure","Tehran refinery struck — fuel shortages spreading","IRGC retaliation: 12 attack waves on Israel","Kuwait refinery also struck"] },
+    { day:11, date:"Mar 10", title:"Iranian Chain of Command Disrupted", severity:"high", events:["Multiple IRGC generals killed in targeted strikes","Iranian military struggling with coordination","Proxy forces receiving less centralized direction","PMF in Iraq partially disengaging"] },
+    { day:12, date:"Mar 11", title:"Hormuz Fees Discussed", severity:"medium", events:["Iran announces Hormuz transit fees for non-hostile nations","China and India seek exemptions","Russia condemns US actions at UN Security Council","Brent crude hits $109 per barrel"] },
+    { day:13, date:"Mar 12", title:"3,900+ Iranian Military Killed", severity:"high", events:["Cumulative Iranian military KIA confirmed at 3,900+","US Congress debates war authorization","NATO allies express concern but stop short of condemnation","19 ships destroyed in Persian Gulf total"] },
+    { day:14, date:"Mar 13", title:"Larijani Assassinated", severity:"critical", events:["Ali Larijani (former Parliament Speaker, key negotiator) assassinated","Iran diplomatic capacity severely degraded","Any peace talks effectively derailed","Second major political assassination of the war"] },
+    { day:15, date:"Mar 14", title:"56 Attack Waves — Second Peak", severity:"critical", events:["56 Iranian attack waves — matches and slightly exceeds Day 2 peak","South Pars gas field struck — massive fire burning","Brent crude hits $115 per barrel","Israel activates Iron Dome, David's Sling, Arrow 3 simultaneously"] },
+    { day:16, date:"Mar 15", title:"South Pars Gasfield Burning", severity:"high", events:["South Pars (world's largest gas field) continues burning","Iran's primary LNG export capacity severely damaged","Qatar and Australia scrambling to fill supply gaps","F-35 struck by Iranian ballistic missile — aircraft survived, crew ejected"] },
+    { day:17, date:"Mar 16", title:"Caspian Sea Strikes", severity:"high", events:["US strikes Iranian naval assets in Caspian Sea","Russia formally protests violation of regional norms","Azerbaijan and Kazakhstan on alert","Iranian northern flank now also engaged"] },
+    { day:18, date:"Mar 17", title:"54 Attack Waves", severity:"high", events:["54 Iranian attack waves — sustained high tempo","Hezbollah launches 45 rockets into northern Israel","US carrier strike group conducts 200+ sorties","Iranian civilian casualties mounting"] },
+    { day:19, date:"Mar 18", title:"Jet Fuel Crisis Emerging", severity:"high", events:["Jet fuel prices up 100% from pre-war levels","Airlines canceling Middle East routes","Dubai airport operating at 40% capacity","Hormuz closure entering 3rd week"] },
+    { day:20, date:"Mar 19", title:"42 Attack Waves", severity:"high", events:["42 Iranian attack waves","US deploys additional Patriot batteries to Gulf states","Iran's missile inventory showing signs of depletion","Negotiation backchannel reported — denied by both sides"] },
+    { day:21, date:"Mar 20", title:"UAE: 7 Missiles + 15 UAVs Intercepted", severity:"high", events:["UAE intercepts 7 ballistic missiles and 15 UAVs in single day","Largest single-day air defense event for UAE","Abu Dhabi on high alert","Global insurance rates for Middle East flights triple"] },
+    { day:22, date:"Mar 21", title:"Iranian Naval Chief Assassinated", severity:"critical", events:["IRGC Naval Commander Tangsiri assassinated","Iran naval operations further disrupted","10,000 US targets struck inside Iran — milestone confirmed","Hormuz transit fees formally announced"] },
+    { day:23, date:"Mar 22", title:"10,000 US Targets Milestone", severity:"high", events:["Pentagon confirms 10,000+ Iranian targets struck","IRGC infrastructure systematically dismantled","Iran's conventional military capability at 40% of pre-war levels (US estimate)","Pakistan begins formal mediation efforts"] },
+    { day:24, date:"Mar 23", title:"Hormuz Fees Begin", severity:"high", events:["Iran begins collecting Hormuz transit fees from compliant tankers","China pays — first nation to do so","Energy markets recalibrate","40-nation coalition forming against Hormuz fees"] },
+    { day:25, date:"Mar 24", title:"82nd Airborne Deploying", severity:"high", events:["82nd Airborne Division deploying to Middle East","Signals potential ground operation planning","Iran FM declares 'zero trust' in any negotiations","Energy infrastructure strike pause announced — until Apr 6"] },
+    { day:26, date:"Mar 25", title:"Energy Strike Pause", severity:"medium", events:["US-Israel pause strikes on Iranian energy infrastructure until Apr 6","Diplomatic window — Pakistan mediating","Oil prices dip slightly on ceasefire hopes","Iran continues missile attacks on Israel — 40 waves"] },
+    { day:27, date:"Mar 26", title:"Pakistan Mediation Intensifies", severity:"medium", events:["Pakistan PM visits Tehran and Washington same week","Iran conditions: end strikes, lift sanctions","US conditions: dismantle nuclear program, end proxy network","Gap described as 'unbridgeable' by analysts"] },
+    { day:28, date:"Mar 27", title:"Iran FM 'Zero Trust'", severity:"high", events:["Iranian FM Abbas Araghchi: 'zero trust' in US-Israel","Talks effectively stalled","Spain, France, Italy restricting US base access for offensive operations","European fracture with US deepening"] },
+    { day:29, date:"Mar 28", title:"Houthis Enter War", severity:"critical", events:["Houthis formally enter the war — first missile fired at Israel","4th active front opens","Houthis: 'We stand with Iran'","Yemen now a full belligerent — US scrambles F/A-18s from Red Sea carrier"] },
+    { day:30, date:"Mar 29", title:"European Bases Restricted", severity:"high", events:["Spain, France, Italy formally restrict US military base access for offensive Iran strikes","NATO fracture now official","E-3 AWACS destroyed at Prince Sultan Air Base, Saudi Arabia","US loses key airborne early warning platform"] },
+    { day:31, date:"Mar 30", title:"AWACS Destroyed in Saudi Arabia", severity:"critical", events:["E-3 Sentry AWACS aircraft destroyed on ground at Prince Sultan Air Base","Massive intelligence and coordination blow to US operations","Saudi Arabia furious — demands explanation","Iran claims responsibility — confirms ability to strike deep into Saudi Arabia"] },
+    { day:32, date:"Mar 31", title:"Trump: War Ends in 2-3 Weeks", severity:"high", events:["Trump declares war will end in 2-3 weeks in press conference","No details provided on mechanism","Iran dismisses statement as 'fantasy'","Pharmaceutical plant struck in Iran — civilian healthcare disruption"] },
+    { day:33, date:"Apr 1", title:"Kharazi Wounded — Talks Derailed", severity:"high", events:["Kamal Kharazi (senior Iranian political figure) wounded in strike","Strike seen as deliberate attempt to derail any negotiation track","Iran: 'This is not the behavior of a party seeking peace'","40-nation Hormuz summit announced by US"] },
+    { day:34, date:"Apr 2", title:"Trump Primetime Address — Iran Fires as He Speaks", severity:"critical", events:["Trump delivers primetime Oval Office address on war","Iran fires missiles at Israel as he speaks — live on US television","40-nation Hormuz summit convened","Jet fuel crisis forces several airlines to cancel all Middle East operations","Oil hits $118 per barrel"] },
+    { day:35, date:"Apr 3–4", title:"F-15E Down, A-10 Downed in Rescue — Day 35", severity:"critical", events:["F-15E Strike Eagle shot down over Iranian airspace","A-10 Warthog downed during CSAR (combat search and rescue) mission — rare aircraft loss","Pasteur Institute (Iran's top biomedical research center) struck","Hezbollah conducts 60 operations in 24-hour period","Cumulative toll: 2,076 killed, 26,500+ injured in Iran","Iran's 5th consecutive day of 38–44 attack waves"] }
+  ]
+};
+
+// ============================================================================
+// GLOBAL UI STATE
+// ============================================================================
+let mapInstance = null;
+let currentTab = 'map';
+let currentCountry = null;
+
+// ============================================================================
+// TAB SWITCHING
+// ============================================================================
+function switchTab(tabId) {
+  // Hide all tabs, show selected
+  const allTabs = document.querySelectorAll('.tab-content');
+  allTabs.forEach(tab => tab.classList.remove('active'));
+  document.getElementById('tab-' + tabId).classList.add('active');
+
+  // Update nav buttons
+  const allBtns = document.querySelectorAll('.tab-btn');
+  allBtns.forEach(btn => btn.classList.remove('active'));
+  event.target.classList.add('active');
+
+  currentTab = tabId;
+
+  // Initialize map on first load
+  if (tabId === 'map' && !mapInstance) {
+    setTimeout(initMap, 100);
+  }
+}
+
+// ============================================================================
+// MAP TAB
+// ============================================================================
+function initMap() {
+  if (mapInstance) return;
+
+  mapInstance = L.map('map', {
+    center: [28, 45],
+    zoom: 5,
+    zoomControl: true,
+    attributionControl: false,
+    maxZoom: 10,
+    minZoom: 3
+  });
+
+  // CartoDB Dark Matter tiles
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    maxZoom: 10,
+    tileSize: 256
+  }).addTo(mapInstance);
+
+  // Add country markers
+  for (const [key, country] of Object.entries(WAR_DATA.countries)) {
+    const isActiveFront = ['iran', 'israel', 'lebanon', 'yemen'].includes(key);
+
+    if (isActiveFront) {
+      // Pulsing marker for active conflict zones
+      const pulseHtml = `<div class="pulse-marker" style="background:${country.color}; color: ${country.color};"></div>`;
+      const marker = L.marker([country.lat, country.lng], {
+        icon: L.divIcon({
+          html: pulseHtml,
+          className: 'pulse-marker-icon',
+          iconSize: [16, 16],
+          iconAnchor: [8, 8]
+        })
+      }).addTo(mapInstance);
+      marker.countryKey = key;
+      marker.on('click', () => showCountryInfo(key));
+    } else {
+      // Regular circle marker
+      const circle = L.circleMarker([country.lat, country.lng], {
+        radius: 8,
+        fillColor: country.color,
+        fillOpacity: 0.8,
+        color: country.color,
+        weight: 2,
+        opacity: 0.9
+      }).addTo(mapInstance);
+      circle.countryKey = key;
+      circle.on('click', () => showCountryInfo(key));
+    }
+  }
+
+  // Attack routes with animations
+  const routes = [
+    { from: WAR_DATA.countries.iran, to: WAR_DATA.countries.israel, color: '#e84343', label: 'Iran → Israel' },
+    { from: WAR_DATA.countries.iran, to: WAR_DATA.countries.qatar, color: '#e84343', label: 'Iran → Gulf States' },
+    { from: WAR_DATA.countries.iran, to: WAR_DATA.countries.bahrain, color: '#e84343', label: '' },
+    { from: WAR_DATA.countries.iran, to: WAR_DATA.countries.kuwait, color: '#e84343', label: '' },
+    { from: WAR_DATA.countries.israel, to: WAR_DATA.countries.iran, color: '#4a9eff', label: 'US+Israel → Iran' },
+    { from: WAR_DATA.countries.yemen, to: WAR_DATA.countries.israel, color: '#f5a623', label: 'Yemen → Israel' }
+  ];
+
+  routes.forEach(route => {
+    const polyline = L.polyline(
+      [[route.from.lat, route.from.lng], [route.to.lat, route.to.lng]],
+      {
+        color: route.color,
+        weight: 2,
+        opacity: 0.6,
+        dashArray: '8, 4',
+        lineCap: 'round',
+        lineJoin: 'round'
+      }
+    ).addTo(mapInstance);
+
+    // Animate the polyline
+    const pathEl = polyline._path;
+    if (pathEl) {
+      pathEl.classList.add('animated-route');
+      pathEl.style.strokeDasharray = '8, 4';
+      pathEl.style.strokeDashoffset = '0';
+      pathEl.style.animation = 'dash 20s linear infinite';
+    }
+  });
+}
+
+function showCountryInfo(countryKey) {
+  currentCountry = countryKey;
+  const country = WAR_DATA.countries[countryKey];
+  const panel = document.getElementById('countryInfoPanel');
+  const content = document.getElementById('countryInfoContent');
+
+  let statusColor = country.color;
+
+  content.innerHTML = `
+    <div class="country-info-header">
+      <div class="country-status-dot" style="background: ${statusColor};"></div>
+      <div class="country-info-title">${country.name}</div>
+    </div>
+    <div class="country-role">${country.role}</div>
+    <div class="country-status" style="border-color: ${statusColor}; color: ${statusColor};">${country.status}</div>
+    <div class="country-facts">
+      <ul>
+        ${country.facts.map(fact => `<li>${fact}</li>`).join('')}
+      </ul>
+    </div>
+  `;
+
+  // panel is always visible — no class toggle needed
+}
+
+// ============================================================================
+// PROXY NETWORK TAB
+// ============================================================================
+function initProxyNetwork() {
+  const svg = document.getElementById('proxy-svg');
+  const width = 700;
+  const height = 500;
+  const centerX = width / 2;
+  const centerY = height / 2;
+
+  // Clear existing
+  svg.innerHTML = '';
+
+  // Defs for arrow markers
+  const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+  const marker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
+  marker.setAttribute('id', 'arrowhead');
+  marker.setAttribute('markerWidth', '10');
+  marker.setAttribute('markerHeight', '10');
+  marker.setAttribute('refX', '9');
+  marker.setAttribute('refY', '3');
+  marker.setAttribute('orient', 'auto');
+  const path = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+  path.setAttribute('points', '0 0, 10 3, 0 6');
+  path.setAttribute('fill', '#6b7280');
+  marker.appendChild(path);
+  defs.appendChild(marker);
+  svg.appendChild(defs);
+
+  // Iran center circle
+  const iranCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+  iranCircle.setAttribute('cx', centerX);
+  iranCircle.setAttribute('cy', centerY);
+  iranCircle.setAttribute('r', '24');
+  iranCircle.setAttribute('fill', '#e84343');
+  iranCircle.setAttribute('opacity', '0.9');
+  svg.appendChild(iranCircle);
+
+  const iranText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+  iranText.setAttribute('x', centerX);
+  iranText.setAttribute('y', centerY + 6);
+  iranText.setAttribute('text-anchor', 'middle');
+  iranText.setAttribute('font-size', '12');
+  iranText.setAttribute('font-weight', 'bold');
+  iranText.setAttribute('fill', '#fff');
+  iranText.textContent = 'IRAN';
+  svg.appendChild(iranText);
+
+  // Proxy nodes
+  WAR_DATA.proxyNodes.forEach(node => {
+    const angle = (node.angle * Math.PI) / 180;
+    const x = centerX + node.dist * Math.cos(angle);
+    const y = centerY + node.dist * Math.sin(angle);
+
+    // Draw line from Iran to node
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.setAttribute('x1', centerX);
+    line.setAttribute('y1', centerY);
+    line.setAttribute('x2', x);
+    line.setAttribute('y2', y);
+    line.setAttribute('stroke', node.color);
+    line.setAttribute('stroke-width', '2');
+    line.setAttribute('stroke-dasharray', '6, 4');
+    line.setAttribute('opacity', '0.6');
+    line.setAttribute('class', 'animated-route');
+    svg.appendChild(line);
+
+    // Node circle
+    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    circle.setAttribute('cx', x);
+    circle.setAttribute('cy', y);
+    circle.setAttribute('r', '16');
+    circle.setAttribute('fill', node.color);
+    circle.setAttribute('opacity', '0.8');
+    svg.appendChild(circle);
+
+    // Node text
+    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    text.setAttribute('x', x);
+    text.setAttribute('y', y + 4);
+    text.setAttribute('text-anchor', 'middle');
+    text.setAttribute('font-size', '10');
+    text.setAttribute('font-weight', 'bold');
+    text.setAttribute('fill', '#fff');
+    text.textContent = node.name.substring(0, 3);
+    svg.appendChild(text);
+
+    // Status label
+    const statusText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    statusText.setAttribute('x', x);
+    statusText.setAttribute('y', y + 30);
+    statusText.setAttribute('text-anchor', 'middle');
+    statusText.setAttribute('font-size', '9');
+    statusText.setAttribute('fill', '#6b7280');
+    statusText.textContent = node.status;
+    svg.appendChild(statusText);
+  });
+}
+
+// Initialize on load
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initProxyNetwork);
+} else {
+  initProxyNetwork();
+}
+
+// ============================================================================
+// ATTACK WAVES CHART
+// ============================================================================
+function initAttackWavesChart() {
+  const svg = document.getElementById('attackChart');
+  const viewWidth = 950;
+  const viewHeight = 350;
+  const chartLeft = 40;
+  const chartTop = 20;
+  const chartWidth = viewWidth - chartLeft - 40;
+  const chartHeight = viewHeight - chartTop - 60;
+
+  svg.setAttribute('viewBox', `0 0 ${viewWidth} ${viewHeight}`);
+
+  const waves = WAR_DATA.attackWaves;
+  const maxWaves = Math.max(...waves);
+  const avgWaves = Math.round(waves.reduce((a, b) => a + b) / waves.length);
+
+  // Y-axis scale: 0-60
+  const yMax = 60;
+  const yScale = chartHeight / yMax;
+
+  // Draw grid lines
+  for (let i = 0; i <= 6; i++) {
+    const y = chartTop + (i * chartHeight) / 6;
+    const gridLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    gridLine.setAttribute('x1', chartLeft);
+    gridLine.setAttribute('y1', y);
+    gridLine.setAttribute('x2', chartLeft + chartWidth);
+    gridLine.setAttribute('y2', y);
+    gridLine.setAttribute('stroke', '#1e2540');
+    gridLine.setAttribute('stroke-width', '1');
+    svg.appendChild(gridLine);
+
+    // Y-axis labels
+    const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    label.setAttribute('x', chartLeft - 10);
+    label.setAttribute('y', y + 4);
+    label.setAttribute('text-anchor', 'end');
+    label.setAttribute('font-size', '11');
+    label.setAttribute('fill', '#6b7280');
+    label.textContent = yMax - (i * 10);
+    svg.appendChild(label);
+  }
+
+  // Draw average line
+  const avgY = chartTop + chartHeight - (avgWaves * yScale);
+  const avgLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+  avgLine.setAttribute('x1', chartLeft);
+  avgLine.setAttribute('y1', avgY);
+  avgLine.setAttribute('x2', chartLeft + chartWidth);
+  avgLine.setAttribute('y2', avgY);
+  avgLine.setAttribute('stroke', '#4a9eff');
+  avgLine.setAttribute('stroke-width', '2');
+  avgLine.setAttribute('stroke-dasharray', '4, 2');
+  avgLine.setAttribute('opacity', '0.5');
+  svg.appendChild(avgLine);
+
+  // Average label
+  const avgLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+  avgLabel.setAttribute('x', chartLeft + chartWidth + 10);
+  avgLabel.setAttribute('y', avgY + 4);
+  avgLabel.setAttribute('font-size', '10');
+  avgLabel.setAttribute('fill', '#4a9eff');
+  avgLabel.textContent = `Avg: ${avgWaves}`;
+  svg.appendChild(avgLabel);
+
+  // Draw bars
+  const barWidth = (chartWidth / waves.length) * 0.85;
+  const barSpacing = chartWidth / waves.length;
+
+  waves.forEach((wave, idx) => {
+    const x = chartLeft + idx * barSpacing + (barSpacing - barWidth) / 2;
+    const barHeight = (wave * yScale);
+    const y = chartTop + chartHeight - barHeight;
+
+    // Determine color
+    let barColor = '#4a9eff';
+    if (wave > 40) barColor = '#e84343';
+    else if (wave > 20) barColor = '#f5a623';
+
+    const bar = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    bar.setAttribute('x', x);
+    bar.setAttribute('y', y);
+    bar.setAttribute('width', barWidth);
+    bar.setAttribute('height', barHeight);
+    bar.setAttribute('fill', barColor);
+    bar.setAttribute('opacity', '0.85');
+    bar.setAttribute('rx', '2');
+    svg.appendChild(bar);
+
+    // X-axis label every 5 days
+    if ((idx + 1) % 5 === 0) {
+      const dayLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      dayLabel.setAttribute('x', x + barWidth / 2);
+      dayLabel.setAttribute('y', chartTop + chartHeight + 20);
+      dayLabel.setAttribute('text-anchor', 'middle');
+      dayLabel.setAttribute('font-size', '10');
+      dayLabel.setAttribute('fill', '#6b7280');
+      dayLabel.textContent = `D${idx + 1}`;
+      svg.appendChild(dayLabel);
+    }
+  });
+
+  // Axes
+  const xAxis = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+  xAxis.setAttribute('x1', chartLeft);
+  xAxis.setAttribute('y1', chartTop + chartHeight);
+  xAxis.setAttribute('x2', chartLeft + chartWidth);
+  xAxis.setAttribute('y2', chartTop + chartHeight);
+  xAxis.setAttribute('stroke', '#1e2540');
+  xAxis.setAttribute('stroke-width', '2');
+  svg.appendChild(xAxis);
+
+  const yAxis = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+  yAxis.setAttribute('x1', chartLeft);
+  yAxis.setAttribute('y1', chartTop);
+  yAxis.setAttribute('x2', chartLeft);
+  yAxis.setAttribute('y2', chartTop + chartHeight);
+  yAxis.setAttribute('stroke', '#1e2540');
+  yAxis.setAttribute('stroke-width', '2');
+  svg.appendChild(yAxis);
+}
+
+// Initialize on first view or after DOM load
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(initAttackWavesChart, 100);
+  });
+} else {
+  initAttackWavesChart();
+}
+
+// ============================================================================
+// DAILY WAR LOG ACCORDION
+// ============================================================================
+function initAccordion() {
+  const container = document.getElementById('accordionContainer');
+
+  [...WAR_DATA.days].reverse().forEach(dayData => {
+    const item = document.createElement('div');
+    item.className = 'accordion-item';
+
+    const header = document.createElement('div');
+    header.className = 'accordion-header';
+
+    const severityColor = {
+      'critical': '#e84343',
+      'high': '#f5a623',
+      'medium': '#4a9eff'
+    }[dayData.severity];
+
+    header.innerHTML = `
+      <div class="severity-dot" style="background: ${severityColor};"></div>
+      <span><strong>Day ${dayData.day}</strong> • ${dayData.date}</span>
+      <span style="margin-left: auto; font-size: 12px; color: var(--text-muted);">${dayData.title}</span>
+    `;
+
+    const content = document.createElement('div');
+    content.className = 'accordion-content';
+    content.id = `day-content-${dayData.day}`;
+    content.innerHTML = `
+      <ul>
+        ${dayData.events.map(e => `<li>${e}</li>`).join('')}
+      </ul>
+    `;
+
+    // Pre-expand day 35
+    if (dayData.day === 35) {
+      content.classList.add('active');
+    }
+
+    header.onclick = () => toggleDay(dayData.day);
+
+    item.appendChild(header);
+    item.appendChild(content);
+    container.appendChild(item);
+  });
+}
+
+function toggleDay(dayNum) {
+  const content = document.getElementById(`day-content-${dayNum}`);
+  if (content) {
+    content.classList.toggle('active');
+  }
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initAccordion);
+} else {
+  initAccordion();
+}
+
+// ============================================================================
+// PAGE LOAD - Initialize maps/charts
+// ============================================================================
+window.addEventListener('load', () => {
+  // Initialize proxy network and charts if not already done
+  if (!document.getElementById('proxy-svg').innerHTML) {
+    initProxyNetwork();
+  }
+  if (!document.getElementById('attackChart').innerHTML) {
+    initAttackWavesChart();
+  }
+});
+</script>
+
+</body>
+</html>
