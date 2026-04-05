@@ -56,7 +56,7 @@ export default function IntelData() {
                 <Tooltip content={<CasualtyTooltip />} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
                 <Bar dataKey="value" radius={[0, 5, 5, 0]} isAnimationActive animationDuration={1000} label={{
                   position: 'right',
-                  formatter: (v, entry) => entry.payload.display,
+                  formatter: (v) => WAR_DATA.casualties.find(c => c.value === v)?.display ?? String(v),
                   fill: '#9ca3af',
                   fontSize: 11,
                   fontFamily: 'monospace',
